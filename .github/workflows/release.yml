@@ -6,6 +6,8 @@ name: release
 #
 # Authentication: npm trusted publishing (OIDC) for this workflow and the `npm`
 # environment. The NPM_TOKEN secret is only a fallback while it exists.
+# With `stage`, packages go to npm's Staged Packages and are published only after a
+# maintainer approves them on npmjs.com (or `npm stage approve <id>`) with 2FA.
 
 on:
   workflow_dispatch:
@@ -20,6 +22,10 @@ on:
         description: "Build and pack only, do not publish"
         type: boolean
         default: true
+      stage:
+        description: "Stage instead of publish; a maintainer approves each package on npmjs.com with 2FA"
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -124,6 +130,7 @@ jobs:
         with:
           name: npm-dist
           path: npm-dist
+      - run: npm --version
       - name: Publish
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
@@ -133,6 +140,8 @@ jobs:
             name="$(tar -xOzf "$tgz" package/package.json | node -p 'JSON.parse(require("fs").readFileSync(0)).name')"
             if npm view "$name@${{ inputs.version }}" version >/dev/null 2>&1; then
               echo "$name@${{ inputs.version }} is already published, skipping"
+            elif [ "${{ inputs.stage }}" = "true" ]; then
+              npm stage publish "./$tgz" --provenance --access public
             else
               npm publish "./$tgz" --provenance --access public
             fi

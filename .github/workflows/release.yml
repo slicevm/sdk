@@ -4,8 +4,8 @@ name: release
 # runtime repository at the given ref, stages it into the platform packages and
 # publishes all npm packages in lockstep with provenance.
 #
-# Authentication: npm trusted publishing (OIDC) for this workflow and the `npm`
-# environment. The NPM_TOKEN secret is only a fallback while it exists.
+# Authentication: npm trusted publishing (OIDC). Each package trusts this workflow
+# file and the `npm` environment; no npm token is stored anywhere.
 # With `stage`, packages go to npm's Staged Packages and are published only after a
 # maintainer approves them on npmjs.com (or `npm stage approve <id>`) with 2FA.
 
@@ -132,8 +132,6 @@ jobs:
           path: npm-dist
       - run: npm --version
       - name: Publish
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
         run: |
           cd npm-dist
           while read -r tgz; do

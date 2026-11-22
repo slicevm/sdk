@@ -44,7 +44,16 @@ run `npm run npm:generate`, and add a matrix entry in `.github/workflows/release
 
 - npm organization `slicevm` owns the `@slicevm` scope.
 - Each package has a trusted publisher: GitHub Actions, repository `slicevm/sdk`, workflow
-  `release.yml`, environment `npm`. No long-lived token is stored.
+  `release.yml`, environment `npm`, permissions publish and stage publish. No npm token is
+  stored. Renaming `release.yml` or the environment breaks publishing until the trust is
+  updated (`npm trust list @slicevm/<pkg>`, `npm trust github ...`).
+- `stage=true` stages instead of publishing; approve each package on npmjs.com under Staged
+  Packages (or `npm stage approve <id>`) with 2FA.
+- A new package needs its first version published once by a maintainer (for example staged
+  with a short-lived granular token), then `npm trust github @slicevm/<pkg> --repo
+  slicevm/sdk --file release.yml --env npm --allow-publish`.
+- 0.13.5 (2026-11-22) was the first release: staged from CI, approved with 2FA, then trust
+  configured for all six packages and the token deleted.
 - The `npm` environment requires a maintainer's approval and only deploys from `main`.
 
 ## macOS signing

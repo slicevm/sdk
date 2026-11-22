@@ -28,8 +28,10 @@ run `npm run npm:generate`, and add a matrix entry in `.github/workflows/release
 
 1. The runtime is tagged and released first, for example `v0.14.0`.
 2. Actions, `release`, Run workflow with `version=0.14.0`, `runtime_ref=v0.14.0`,
-   `dry_run=true`. Check the pack output.
-3. Run again with `dry_run=false` and approve the `npm` environment. Versions that are
+   `dry_run=true`. The `verify` job builds, tests and packs; check its output. A dry run
+   needs no approval.
+3. Run again with `dry_run=false` and approve the `npm` environment (Review deployments).
+   The `publish` job publishes exactly the tarballs `verify` tested. Versions that are
    already on npm are skipped, so a failed run can be re-run.
 4. Commit the version bump: `npm run npm:version -- 0.14.0 && npm run npm:generate`.
 5. Smoke test on each OS:

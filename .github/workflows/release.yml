@@ -64,19 +64,15 @@ jobs:
           path: target/${{ matrix.triple }}/release/${{ matrix.exe }}
           if-no-files-found: error
 
-  publish:
+  verify:
+    # Stages, tests and packs everything. Dry runs end here, so they need no approval.
     needs: build
     runs-on: ubuntu-24.04
-    environment: npm
-    permissions:
-      contents: read
-      id-token: write # trusted publishing and provenance
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: 24 # ships npm 11, needed for trusted publishing
-          registry-url: https://registry.npmjs.org
+          node-version: 24
           cache: npm
       - uses: actions/download-artifact@v4
         with:
@@ -95,22 +91,49 @@ jobs:
         run: |
           export SLICE_TEST_BINARY="$PWD/packages/cli-linux-x64-gnu/bin/slice"
           SLICE_BINARY_PATH="$SLICE_TEST_BINARY" npm test
-      - name: Pack (always)
+      - name: Pack
         run: |
-          for p in packages/cli-* packages/cli packages/mcp packages/sdk; do npm pack --dry-run "./$p"; done
+          mkdir -p npm-dist
+          # Publish order: platform packages first so the wrapper's optionalDependencies resolve.
+          for p in packages/cli-* packages/cli packages/mcp packages/sdk; do
+            npm pack "./$p" --pack-destination npm-dist --json | node -e 'for (const x of JSON.parse(require("fs").readFileSync(0))) console.log(x.filename)' >> npm-dist/order.txt
+          done
+          cat npm-dist/order.txt
+          ls -l npm-dist
+      - uses: actions/upload-artifact@v4
+        with:
+          name: npm-dist
+          path: npm-dist/
+          if-no-files-found: error
+
+  publish:
+    # Publishes exactly the tarballs that verify tested. Gated by the npm environment.
+    if: ${{ !inputs.dry_run }}
+    needs: verify
+    runs-on: ubuntu-24.04
+    environment: npm
+    permissions:
+      contents: read
+      id-token: write # trusted publishing and provenance
+    steps:
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24 # ships npm 11, needed for trusted publishing
+          registry-url: https://registry.npmjs.org
+      - uses: actions/download-artifact@v4
+        with:
+          name: npm-dist
+          path: npm-dist
       - name: Publish
-        if: ${{ !inputs.dry_run }}
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
         run: |
-          publish() {
-            name="$(node -p "require('./$1/package.json').name")"
+          cd npm-dist
+          while read -r tgz; do
+            name="$(tar -xOzf "$tgz" package/package.json | node -p 'JSON.parse(require("fs").readFileSync(0)).name')"
             if npm view "$name@${{ inputs.version }}" version >/dev/null 2>&1; then
               echo "$name@${{ inputs.version }} is already published, skipping"
             else
-              npm publish "./$1" --provenance --access public
+              npm publish "./$tgz" --provenance --access public
             fi
-          }
-          # Platform packages first so the wrapper's optionalDependencies resolve.
-          for p in packages/cli-*; do publish "$p"; done
-          for p in packages/cli packages/mcp packages/sdk; do publish "$p"; done
+          done < order.txt

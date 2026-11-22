@@ -1,0 +1,30 @@
+{
+  "name": "@slicevm/cli-win32-x64-msvc",
+  "version": "0.13.5",
+  "description": "The win32-x64-msvc native binary for the Slice runtime. Install @slicevm/cli instead of this package.",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/slicevm/sdk.git",
+    "directory": "packages/cli-win32-x64-msvc"
+  },
+  "homepage": "https://slicevm.com",
+  "bugs": {
+    "url": "https://github.com/slicevm/sdk/issues"
+  },
+  "os": [
+    "win32"
+  ],
+  "cpu": [
+    "x64"
+  ],
+  "files": [
+    "bin/slice.exe",
+    "README.md",
+    "LICENSE"
+  ],
+  "preferUnplugged": true,
+  "publishConfig": {
+    "access": "public"
+  }
+}

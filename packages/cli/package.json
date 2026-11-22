@@ -1,0 +1,57 @@
+{
+  "name": "@slicevm/cli",
+  "version": "0.13.5",
+  "description": "Zero-install npm distribution of the Slice JS/TS microVM runtime. Run with npx @slicevm/cli.",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/slicevm/sdk.git",
+    "directory": "packages/cli"
+  },
+  "homepage": "https://slicevm.com",
+  "bugs": {
+    "url": "https://github.com/slicevm/sdk/issues"
+  },
+  "keywords": [
+    "slice",
+    "runtime",
+    "javascript",
+    "typescript",
+    "sandbox",
+    "microvm",
+    "mcp"
+  ],
+  "type": "commonjs",
+  "main": "./lib/index.js",
+  "types": "./lib/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./lib/index.d.ts",
+      "default": "./lib/index.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "bin": {
+    "slice": "bin/slice.js"
+  },
+  "files": [
+    "bin/",
+    "lib/",
+    "README.md",
+    "LICENSE"
+  ],
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "test": "node --test test/*.test.js"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "optionalDependencies": {
+    "@slicevm/cli-linux-x64-gnu": "0.13.5",
+    "@slicevm/cli-darwin-arm64": "0.13.5",
+    "@slicevm/cli-win32-x64-msvc": "0.13.5"
+  }
+}

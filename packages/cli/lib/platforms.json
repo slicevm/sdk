@@ -1,0 +1,28 @@
+{
+  "$comment": "Generated from packages/platforms.json by scripts/npm/generate-platform-packages.mjs. Do not edit.",
+  "binaryName": "slice",
+  "targets": [
+    {
+      "target": "linux-x64-gnu",
+      "os": "linux",
+      "cpu": "x64",
+      "libc": "glibc",
+      "packageName": "@slicevm/cli-linux-x64-gnu",
+      "binaryFile": "slice"
+    },
+    {
+      "target": "darwin-arm64",
+      "os": "darwin",
+      "cpu": "arm64",
+      "packageName": "@slicevm/cli-darwin-arm64",
+      "binaryFile": "slice"
+    },
+    {
+      "target": "win32-x64-msvc",
+      "os": "win32",
+      "cpu": "x64",
+      "packageName": "@slicevm/cli-win32-x64-msvc",
+      "binaryFile": "slice.exe"
+    }
+  ]
+}

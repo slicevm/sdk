@@ -1,0 +1,19 @@
+node_modules/
+dist/
+*.tsbuildinfo
+*.log
+*.tgz
+
+# platform binaries are staged by the release workflow, never committed
+packages/cli-*/bin/slice
+packages/cli-*/bin/slice.exe
+dist-bin/
+
+.env
+.env.*
+*.token
+.DS_Store
+Thumbs.db
+.vscode/*
+!.vscode/extensions.json
+.idea/

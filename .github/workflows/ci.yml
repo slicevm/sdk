@@ -1,0 +1,46 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run check:text
+      - run: npm run npm:check-versions
+      - run: npm run build
+      # The runtime release matching the package version, so the local-mode
+      # integration tests run against a real binary (they skip without one).
+      - name: Download slice binary
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          v="$(node -p 'require("./packages/cli/package.json").version')"
+          mkdir -p .runtime && cd .runtime
+          if gh release download "v$v" -R slicevm/slice -p 'slice-linux-x86_64.tar.gz*'; then
+            sha256sum -c slice-linux-x86_64.tar.gz.sha256
+            tar -xzf slice-linux-x86_64.tar.gz
+            bin="$(find "$PWD" -type f -name slice | head -1)"
+            chmod +x "$bin"
+            "$bin" --version
+            echo "SLICE_TEST_BINARY=$bin" >> "$GITHUB_ENV"
+          else
+            echo "::warning::no runtime release v$v; local-mode tests will skip"
+          fi
+      - run: npm test

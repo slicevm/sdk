@@ -1,0 +1,24 @@
+{
+  "name": "slicevm-sdk",
+  "private": true,
+  "description": "npm packages for the Slice JS/TS microVM runtime: @slicevm/cli, @slicevm/mcp, @slicevm/sdk.",
+  "license": "MIT",
+  "type": "module",
+  "engines": {
+    "node": ">=22"
+  },
+  "workspaces": [
+    "packages/cli",
+    "packages/mcp",
+    "packages/sdk"
+  ],
+  "scripts": {
+    "build": "npm run build -w packages/sdk",
+    "test": "npm test -w packages/cli -w packages/mcp -w packages/sdk",
+    "check:text": "node scripts/check-text.mjs",
+    "npm:generate": "node scripts/npm/generate-platform-packages.mjs",
+    "npm:stage": "node scripts/npm/stage-binaries.mjs",
+    "npm:version": "node scripts/npm/sync-versions.mjs",
+    "npm:check-versions": "node scripts/npm/sync-versions.mjs --check"
+  }
+}

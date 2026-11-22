@@ -1,0 +1,33 @@
+{
+  "name": "@slicevm/cli-linux-x64-gnu",
+  "version": "0.13.5",
+  "description": "The linux-x64-gnu native binary for the Slice runtime. Install @slicevm/cli instead of this package.",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/slicevm/sdk.git",
+    "directory": "packages/cli-linux-x64-gnu"
+  },
+  "homepage": "https://slicevm.com",
+  "bugs": {
+    "url": "https://github.com/slicevm/sdk/issues"
+  },
+  "os": [
+    "linux"
+  ],
+  "cpu": [
+    "x64"
+  ],
+  "libc": [
+    "glibc"
+  ],
+  "files": [
+    "bin/slice",
+    "README.md",
+    "LICENSE"
+  ],
+  "preferUnplugged": true,
+  "publishConfig": {
+    "access": "public"
+  }
+}

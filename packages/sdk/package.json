@@ -1,0 +1,64 @@
+{
+  "name": "@slicevm/sdk",
+  "version": "0.13.5",
+  "description": "TypeScript SDK for Slice sandboxes: run untrusted JS/TS locally via the slice binary or on the hosted api.slicevm.com.",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/slicevm/sdk.git",
+    "directory": "packages/sdk"
+  },
+  "homepage": "https://slicevm.com",
+  "bugs": {
+    "url": "https://github.com/slicevm/sdk/issues"
+  },
+  "keywords": [
+    "slice",
+    "sandbox",
+    "ai",
+    "code-mode",
+    "typescript",
+    "mcp",
+    "agents"
+  ],
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "dist/",
+    "README.md",
+    "LICENSE"
+  ],
+  "sideEffects": false,
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "npm run build && node --test test/*.test.mjs",
+    "prepublishOnly": "npm run build"
+  },
+  "peerDependencies": {
+    "@slicevm/cli": "^0.13.5"
+  },
+  "peerDependenciesMeta": {
+    "@slicevm/cli": {
+      "optional": true
+    }
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.0",
+    "typescript": "^5.7.0"
+  },
+  "publishConfig": {
+    "access": "public"
+  }
+}

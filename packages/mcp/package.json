@@ -1,0 +1,46 @@
+{
+  "name": "@slicevm/mcp",
+  "version": "0.13.5",
+  "description": "Slice AI Code Mode MCP server: sandboxed TypeScript execution for Claude Desktop, Cursor, and Windsurf via npx.",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/slicevm/sdk.git",
+    "directory": "packages/mcp"
+  },
+  "homepage": "https://slicevm.com",
+  "bugs": {
+    "url": "https://github.com/slicevm/sdk/issues"
+  },
+  "keywords": [
+    "mcp",
+    "model-context-protocol",
+    "sandbox",
+    "code-mode",
+    "claude",
+    "cursor",
+    "windsurf",
+    "slice"
+  ],
+  "type": "commonjs",
+  "bin": {
+    "slice-mcp": "bin/slice-mcp.js"
+  },
+  "files": [
+    "bin/",
+    "README.md",
+    "LICENSE"
+  ],
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "test": "node --test test/*.test.js"
+  },
+  "dependencies": {
+    "@slicevm/cli": "0.13.5"
+  },
+  "publishConfig": {
+    "access": "public"
+  }
+}

@@ -1,0 +1,30 @@
+{
+  "name": "@slicevm/cli-darwin-arm64",
+  "version": "0.13.5",
+  "description": "The darwin-arm64 native binary for the Slice runtime. Install @slicevm/cli instead of this package.",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/slicevm/sdk.git",
+    "directory": "packages/cli-darwin-arm64"
+  },
+  "homepage": "https://slicevm.com",
+  "bugs": {
+    "url": "https://github.com/slicevm/sdk/issues"
+  },
+  "os": [
+    "darwin"
+  ],
+  "cpu": [
+    "arm64"
+  ],
+  "files": [
+    "bin/slice",
+    "README.md",
+    "LICENSE"
+  ],
+  "preferUnplugged": true,
+  "publishConfig": {
+    "access": "public"
+  }
+}

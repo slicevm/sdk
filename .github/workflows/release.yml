@@ -1,0 +1,116 @@
+name: release
+
+# Builds the slice binary for every target in packages/platforms.json from the
+# runtime repository at the given ref, stages it into the platform packages and
+# publishes all npm packages in lockstep with provenance.
+#
+# Authentication: npm trusted publishing (OIDC) for this workflow and the `npm`
+# environment. The NPM_TOKEN secret is only a fallback while it exists.
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Version to publish (e.g. 0.13.5); must match the runtime release"
+        required: true
+      runtime_ref:
+        description: "Git ref of the runtime repository to build (e.g. v0.13.5)"
+        required: true
+      dry_run:
+        description: "Build and pack only, do not publish"
+        type: boolean
+        default: true
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    strategy:
+      fail-fast: true
+      matrix:
+        include:
+          - triple: x86_64-unknown-linux-gnu
+            os: ubuntu-22.04 # oldest supported glibc runner, maximizes compatibility
+            exe: slice
+          - triple: aarch64-apple-darwin
+            os: macos-15
+            exe: slice
+          - triple: x86_64-pc-windows-msvc
+            os: windows-2022
+            exe: slice.exe
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: Check out runtime
+        uses: actions/checkout@v4
+        with:
+          repository: slicevm/slice
+          ref: ${{ inputs.runtime_ref }}
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.triple }}
+      - uses: Swatinem/rust-cache@v2
+      - name: Build
+        run: cargo build --release --locked -p slice-cli --target ${{ matrix.triple }}
+      - name: Check version
+        shell: bash
+        run: |
+          out="$(./target/${{ matrix.triple }}/release/${{ matrix.exe }} --version)"
+          echo "$out"
+          echo "$out" | grep -q "v${{ inputs.version }}" || { echo "binary version does not match ${{ inputs.version }}"; exit 1; }
+      - uses: actions/upload-artifact@v4
+        with:
+          name: slice-${{ matrix.triple }}
+          path: target/${{ matrix.triple }}/release/${{ matrix.exe }}
+          if-no-files-found: error
+
+  publish:
+    needs: build
+    runs-on: ubuntu-24.04
+    environment: npm
+    permissions:
+      contents: read
+      id-token: write # trusted publishing and provenance
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24 # ships npm 11, needed for trusted publishing
+          registry-url: https://registry.npmjs.org
+          cache: npm
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist-bin
+          pattern: slice-*
+      - name: Arrange artifacts as dist-bin/<triple>/slice[.exe]
+        run: |
+          for d in dist-bin/slice-*; do mv "$d" "dist-bin/${d#dist-bin/slice-}"; done
+          find dist-bin -type f
+      - run: npm ci
+      - run: node scripts/npm/sync-versions.mjs ${{ inputs.version }}
+      - run: node scripts/npm/generate-platform-packages.mjs
+      - run: node scripts/npm/stage-binaries.mjs --from=dist-bin --strict
+      - run: npm run build
+      - name: Test packages against the staged linux binary
+        run: |
+          export SLICE_TEST_BINARY="$PWD/packages/cli-linux-x64-gnu/bin/slice"
+          SLICE_BINARY_PATH="$SLICE_TEST_BINARY" npm test
+      - name: Pack (always)
+        run: |
+          for p in packages/cli-* packages/cli packages/mcp packages/sdk; do npm pack --dry-run "./$p"; done
+      - name: Publish
+        if: ${{ !inputs.dry_run }}
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: |
+          publish() {
+            name="$(node -p "require('./$1/package.json').name")"
+            if npm view "$name@${{ inputs.version }}" version >/dev/null 2>&1; then
+              echo "$name@${{ inputs.version }} is already published, skipping"
+            else
+              npm publish "./$1" --provenance --access public
+            fi
+          }
+          # Platform packages first so the wrapper's optionalDependencies resolve.
+          for p in packages/cli-*; do publish "$p"; done
+          for p in packages/cli packages/mcp packages/sdk; do publish "$p"; done

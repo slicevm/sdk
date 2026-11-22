@@ -1,0 +1,12 @@
+{
+  "$comment": "Single source of truth for the native binary packages. Run `node scripts/npm/generate-platform-packages.mjs` after editing. Adding a target is one line in `targets`.",
+  "scope": "@slicevm",
+  "packagePrefix": "cli-",
+  "binaryName": "slice",
+  "repository": "https://github.com/slicevm/sdk",
+  "targets": [
+    { "target": "linux-x64-gnu", "os": "linux", "cpu": "x64", "libc": "glibc", "rustTriple": "x86_64-unknown-linux-gnu" },
+    { "target": "darwin-arm64", "os": "darwin", "cpu": "arm64", "rustTriple": "aarch64-apple-darwin" },
+    { "target": "win32-x64-msvc", "os": "win32", "cpu": "x64", "rustTriple": "x86_64-pc-windows-msvc" }
+  ]
+}

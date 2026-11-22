@@ -1,0 +1,52 @@
+# Releasing
+
+All packages are published in lockstep with one version, equal to the runtime version
+printed by `slice --version`. Publishing runs only in GitHub Actions, through npm trusted
+publishing with provenance.
+
+## How the packages fit together
+
+```text
+packages/platforms.json           single manifest of targets (edit here only)
+        |
+        | npm run npm:generate
+        v
+packages/cli-<target>/            generated; os/cpu/libc fields; bin/ gets the binary at release time
+packages/cli/                     optionalDependencies on every cli-* at the exact same version
+        lib/index.js              binaryPath(): SLICE_BINARY_PATH, else require.resolve of the matching cli-*
+packages/mcp/                     execs `slice mcp`, implements --audit-egress=auto by reading .env
+packages/sdk/                     zero runtime deps; local mode spawns `slice mcp`, remote mode calls api.slicevm.com
+```
+
+The `cli-*` packages are deliberately not npm workspaces: their `os`/`cpu` fields would make
+`npm install` fail on every other platform.
+
+To add a target (for example `linux-arm64-gnu`): add one line to `packages/platforms.json`,
+run `npm run npm:generate`, and add a matrix entry in `.github/workflows/release.yml`.
+
+## Release
+
+1. The runtime is tagged and released first, for example `v0.14.0`.
+2. Actions, `release`, Run workflow with `version=0.14.0`, `runtime_ref=v0.14.0`,
+   `dry_run=true`. Check the pack output.
+3. Run again with `dry_run=false` and approve the `npm` environment. Versions that are
+   already on npm are skipped, so a failed run can be re-run.
+4. Commit the version bump: `npm run npm:version -- 0.14.0 && npm run npm:generate`.
+5. Smoke test on each OS:
+   ```sh
+   npx @slicevm/cli@0.14.0 --version
+   npx -y @slicevm/mcp@0.14.0 --smoke-test
+   ```
+
+## npm setup
+
+- npm organization `slicevm` owns the `@slicevm` scope.
+- Each package has a trusted publisher: GitHub Actions, repository `slicevm/sdk`, workflow
+  `release.yml`, environment `npm`. No long-lived token is stored.
+- The `npm` environment requires a maintainer's approval and only deploys from `main`.
+
+## macOS signing
+
+Unsigned binaries downloaded by npm are not quarantined by Gatekeeper, but signing is still
+recommended. With an Apple Developer ID, add `codesign --sign "Developer ID Application: ..."
+--options runtime` and `xcrun notarytool submit` steps to the macOS build job before upload.

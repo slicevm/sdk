@@ -97,7 +97,7 @@ Differences from the hosted API:
 | `serverTiming` | Always `[]` |
 | `allowNet` | Honored per call, but only for hosts the server also allows: start it with `localArgs: ["--allow-net=<host>"]` |
 | `auditEgress`, `deterministicSeed`, `checkpoints` | Same as the hosted API |
-| `exitCode` | Not reported |
+| `exitCode` | Same as the hosted API (runtime 0.14 or newer) |
 | `Slice.kv` | Shared by all calls of one client (the hosted API starts every run empty) |
 | `casDigest`, `uploadCas` | Throw `unsupported` |
 

@@ -18,9 +18,11 @@ export interface LocalConfig {
 }
 
 /** Shape of the JSON text returned by the `slice_eval_ts` MCP tool. */
-/** `slice_eval_ts` result as reported by `slice mcp` (runtime 0.11). */
+/** `slice_eval_ts` result as reported by `slice mcp` (runtime 0.14). */
 interface McpEvalPayload {
   ok: boolean;
+  /** Guest process.exit(n) or process.exitCode (runtime 0.14+); null when the guest set neither. */
+  exitCode?: number | null;
   value: string | null;
   returnJson?: string | null;
   /** Uncaught exception or syntax error text. */
@@ -308,7 +310,13 @@ export class LocalBackend implements Backend {
     }
 
     // Contract: an uncaught exception is ok:false, violation null, with the message in `result`.
-    const error = payload.violation ? null : (payload.error ?? null);
+    // A non-zero exit code is ok:false with `exitCode` set and the script's value in `result`,
+    // as in the hosted API (runtime 0.14 also puts "Process exited with status code n" in `error`).
+    // Runtime 0.14 also reports exitCode 1 for uncaught errors; the contract keeps exitCode for
+    // guest process.exit / process.exitCode only, so it is dropped when the run ended uncaught.
+    const uncaught = typeof payload.error === "string" && payload.error.startsWith("Uncaught");
+    const exitCode = typeof payload.exitCode === "number" && !uncaught ? payload.exitCode : undefined;
+    const error = payload.violation || exitCode !== undefined ? null : (payload.error ?? null);
     return {
       ok: payload.ok,
       stdout: payload.stdout ?? [],
@@ -317,6 +325,7 @@ export class LocalBackend implements Backend {
       telemetry: localTelemetry(payload),
       requestId: `local_${++this.#seq}`,
       serverTiming: [],
+      ...(exitCode !== undefined ? { exitCode } : {}),
     };
   }
 

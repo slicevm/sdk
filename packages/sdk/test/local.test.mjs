@@ -56,6 +56,22 @@ test("local mode", { skip }, async (t) => {
     assert.equal(res.ok, false);
     assert.equal(res.violation, null);
     assert.match(String(res.result), /boom/);
+    assert.equal(res.exitCode, undefined);
+  });
+
+  await t.test("exit codes follow the contract: non-zero is ok false with exitCode, zero stays ok", async () => {
+    const failed = await slice.evalSandbox("process.exit(3)");
+    assert.equal(failed.ok, false);
+    assert.equal(failed.exitCode, 3);
+    assert.equal(failed.violation, null);
+    const viaProperty = await slice.evalSandbox("process.exitCode = 2; 7");
+    assert.equal(viaProperty.ok, false);
+    assert.equal(viaProperty.exitCode, 2);
+    assert.equal(viaProperty.result, 7);
+    const clean = await slice.evalSandbox("process.exit(0)");
+    assert.equal(clean.ok, true);
+    assert.equal(clean.exitCode, 0);
+    assert.equal((await slice.evalSandbox("1")).exitCode, undefined);
   });
 
   await t.test("per-call allowNet and several audit secrets", async () => {

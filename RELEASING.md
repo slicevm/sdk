@@ -14,7 +14,8 @@ packages/platforms.json           single manifest of targets (edit here only)
 packages/cli-<target>/            generated; os/cpu/libc fields; bin/ gets the binary at release time
 packages/cli/                     optionalDependencies on every cli-* at the exact same version
         lib/index.js              binaryPath(): SLICE_BINARY_PATH, else require.resolve of the matching cli-*
-packages/mcp/                     execs `slice mcp`, implements --audit-egress=auto by reading .env
+packages/mcp/                     local: execs `slice mcp`, implements --audit-egress=auto by reading .env;
+                                  cloud (SLICE_API_KEY set): stdio bridge to https://api.slicevm.com/mcp
 packages/sdk/                     zero runtime deps; local mode spawns `slice mcp`, remote mode calls api.slicevm.com
 ```
 
@@ -37,8 +38,11 @@ run `npm run npm:generate`, and add a matrix entry in `.github/workflows/release
 5. Smoke test on each OS:
    ```sh
    npx @slicevm/cli@0.14.0 --version
-   npx -y @slicevm/mcp@0.14.0 --smoke-test
+   npx -y @slicevm/mcp@0.14.0 --smoke-test --local
+   # cloud mode (0.15 and later), with a key that has the sandbox:eval scope:
+   SLICE_API_KEY=<key> npx -y @slicevm/mcp@0.14.0 --smoke-test
    ```
+   Pass `--local` explicitly: with `SLICE_API_KEY` in the shell, `--smoke-test` tests cloud mode instead.
 
 ## npm setup
 

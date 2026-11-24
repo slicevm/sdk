@@ -6,7 +6,7 @@ npm distribution and client libraries for [Slice](https://slicevm.com), the JS/T
 | Package | What it is |
 | :--- | :--- |
 | [`@slicevm/cli`](packages/cli) | The `slice` command through npm, with a prebuilt native binary. No Rust toolchain. |
-| [`@slicevm/mcp`](packages/mcp) | MCP server that runs TypeScript in a sandbox for AI agents (`slice mcp`). |
+| [`@slicevm/mcp`](packages/mcp) | MCP server that runs TypeScript in a sandbox for AI agents: locally (`slice mcp`), or on Slice Cloud with `SLICE_API_KEY` set. |
 | [`@slicevm/sdk`](packages/sdk) | TypeScript client: local mode runs the binary, cloud mode calls `api.slicevm.com`. |
 | `@slicevm/cli-<target>` | Native binaries, one per platform, installed automatically by `@slicevm/cli`. |
 

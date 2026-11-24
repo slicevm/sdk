@@ -18,7 +18,7 @@ There are two modes:
 - **Cloud mode** (when an API key is set) is a stdio bridge to the hosted Slice
   Cloud MCP endpoint, `https://api.slicevm.com/mcp`. Code runs in a fresh Slice
   isolate on Slice servers, and your deployed Slice Functions appear as tools.
-  Cloud mode requires @slicevm/mcp 0.15 or later.
+  Cloud mode requires @slicevm/mcp 0.14.1 or later.
 
 ## Local mode
 

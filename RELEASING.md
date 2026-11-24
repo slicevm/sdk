@@ -39,7 +39,7 @@ run `npm run npm:generate`, and add a matrix entry in `.github/workflows/release
    ```sh
    npx @slicevm/cli@0.14.0 --version
    npx -y @slicevm/mcp@0.14.0 --smoke-test --local
-   # cloud mode (0.15 and later), with a key that has the sandbox:eval scope:
+   # cloud mode (0.14.1 and later), with a key that has the sandbox:eval scope:
    SLICE_API_KEY=<key> npx -y @slicevm/mcp@0.14.0 --smoke-test
    ```
    Pass `--local` explicitly: with `SLICE_API_KEY` in the shell, `--smoke-test` tests cloud mode instead.

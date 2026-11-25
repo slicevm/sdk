@@ -39,6 +39,7 @@ interface McpEvalPayload {
   checkpointsTaken?: number;
   restoresPerformed?: number;
   restoreTimeNs?: number;
+  deniedCapabilities?: string[];
 }
 
 /** Hosted defaults (docs/architecture/01-api-contract.md), sent on every call so local runs match. */
@@ -296,6 +297,7 @@ export class LocalBackend implements Backend {
     if (options.auditEgress?.length) args.auditSecrets = options.auditEgress;
     if (options.deterministicSeed !== undefined) args.deterministicSeed = options.deterministicSeed;
     if (options.checkpoints !== undefined) args.checkpoints = options.checkpoints;
+    if (options.timeoutMs !== undefined) args.timeoutMs = options.timeoutMs;
 
     const session = await this.#getSession();
     const result = (await session.request("tools/call", { name: "slice_eval_ts", arguments: args }, this.#config.timeoutMs)) as {
@@ -323,6 +325,7 @@ export class LocalBackend implements Backend {
       result: error ?? parseValue(payload.value),
       violation: payload.violation ?? null,
       telemetry: localTelemetry(payload),
+      deniedCapabilities: payload.deniedCapabilities ?? [],
       requestId: `local_${++this.#seq}`,
       serverTiming: [],
       ...(exitCode !== undefined ? { exitCode } : {}),

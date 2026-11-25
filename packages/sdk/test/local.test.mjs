@@ -51,6 +51,19 @@ test("local mode", { skip }, async (t) => {
     assert.equal(after.result, 2);
   });
 
+  await t.test("timeoutMs ends a run with WallClockExceeded (runtime 0.14.3)", async () => {
+    const res = await slice.evalSandbox("let i = 0; while (true) { i++ }", { fuel: 10_000_000_000, timeoutMs: 200 });
+    assert.equal(res.ok, false);
+    assert.match(res.violation, /WallClock/);
+  });
+
+  await t.test("a refused fetch is a catchable error with a stable code (runtime 0.14.3)", async () => {
+    const res = await slice.evalSandbox('let c = ""; try { await fetch("https://denied.example.org/") } catch (e) { c = e.code } c');
+    assert.equal(res.ok, true);
+    assert.equal(res.result, "ERR_SLICE_NET_DENIED");
+    assert.ok(Array.isArray(res.deniedCapabilities));
+  });
+
   await t.test("uncaught exceptions follow the contract: ok false, violation null, message in result", async () => {
     const res = await slice.evalSandbox('throw new Error("boom")');
     assert.equal(res.ok, false);

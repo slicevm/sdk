@@ -2,10 +2,19 @@
 
 /** Per-call sandbox options (`EvalRequest.options`). */
 export interface SandboxEvalOptions {
-  /** Deterministic instruction fuel. Default 25,000,000, capped by plan. */
+  /**
+   * Fuel: guest steps, function calls and work inside built-ins. Cloud: default and maximum
+   * are the plan's. Local mode: default 25,000,000.
+   */
   fuel?: number;
-  /** Memory cage in kilobytes. Default 4,096, capped by plan. */
+  /** Memory cage in kilobytes; every object, array and string counts. Cloud: default and maximum are the plan's. Local mode: default 4,096. */
   memoryKb?: number;
+  /**
+   * Wall-clock limit of the run in milliseconds (runtime 0.14.3). Cloud: default and maximum are
+   * the plan's (Free 10,000, Pro 30,000, Scale 60,000). Not the client's `timeoutMs`, which
+   * bounds the whole request.
+   */
+  timeoutMs?: number;
   /** Allowed egress hosts (`host` or `host:port`). Default [] (deny all). */
   allowNet?: string[];
   /** Secrets blocked across raw, Base64 and Base64URL egress. */
@@ -49,6 +58,10 @@ export interface SandboxResult {
   /** Set when the guest called process.exit(n) or set process.exitCode; non-zero means ok is false. */
   exitCode?: number;
   telemetry: SandboxTelemetry;
+  /** The fuel, memory and time the run got after defaults and plan caps (cloud, gateway 0.6.0). */
+  limits?: { fuel: number; memoryKb: number; timeoutMs: number };
+  /** Capability attempts the sandbox refused, including ones the code caught (runtime 0.14.3). */
+  deniedCapabilities?: string[];
 }
 
 export type ApiErrorCode =

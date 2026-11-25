@@ -1,6 +1,6 @@
 {
   "name": "@slicevm/sdk",
-  "version": "0.14.0",
+  "version": "0.14.1",
   "description": "TypeScript SDK for Slice sandboxes: run untrusted JS/TS locally via the slice binary or on the hosted api.slicevm.com.",
   "license": "MIT",
   "repository": {
@@ -47,7 +47,7 @@
     "prepublishOnly": "npm run build"
   },
   "peerDependencies": {
-    "@slicevm/cli": "^0.14.0"
+    "@slicevm/cli": "^0.14.1"
   },
   "peerDependenciesMeta": {
     "@slicevm/cli": {

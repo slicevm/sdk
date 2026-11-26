@@ -46,8 +46,11 @@ try {
 
 - `evalSandbox(code, options?)` returns `SandboxResult` plus `requestId` and
   `serverTiming`. Options are the contract's `SandboxEvalOptions`
-  (`fuel`, `memoryKb`, `allowNet`, `auditEgress`, `deterministicSeed`,
-  `checkpoints`) plus `casDigest`.
+  (`fuel`, `memoryKb`, `timeoutMs`, `allowNet`, `auditEgress`,
+  `deterministicSeed`, `checkpoints`) plus `casDigest`. On Slice Cloud a run
+  that asks for nothing gets the plan maximum, and `limits` reports the fuel,
+  memory and time it got. `deniedCapabilities` lists every refused network,
+  file, subprocess or environment attempt, including ones the code caught.
 - `uploadCas(bytes)` uploads a `.cas` bundle from `slice pack` (remote only,
   Pro and Scale plans) and returns `{ casDigest, bytes, modules }`.
 - `close()` stops the local child process. Safe to call more than once.

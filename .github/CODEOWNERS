@@ -1,0 +1,8 @@
+# Every change needs a review from the owner. Workflows, release scripts and package
+# manifests decide what is published to npm, so they are listed explicitly.
+*                       @siktec-lab
+/.github/               @siktec-lab
+/scripts/npm/           @siktec-lab
+/packages/*/package.json @siktec-lab
+/package.json           @siktec-lab
+/package-lock.json      @siktec-lab

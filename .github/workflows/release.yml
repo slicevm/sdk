@@ -49,7 +49,7 @@ jobs:
     timeout-minutes: 60
     steps:
       - name: Check out runtime
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           repository: slicevm/slice
           ref: ${{ inputs.runtime_ref }}
@@ -66,7 +66,7 @@ jobs:
           out="$(./target/${{ matrix.triple }}/release/${{ matrix.exe }} --version)"
           echo "$out"
           echo "$out" | grep -q "v${{ inputs.version }}" || { echo "binary version does not match ${{ inputs.version }}"; exit 1; }
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: slice-${{ matrix.triple }}
           path: target/${{ matrix.triple }}/release/${{ matrix.exe }}
@@ -78,14 +78,14 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           persist-credentials: false
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: 22 # same as ci.yml; only publish needs npm 11
           cache: npm
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           path: dist-bin
           pattern: slice-*
@@ -111,7 +111,7 @@ jobs:
           done
           cat npm-dist/order.txt
           ls -l npm-dist
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: npm-dist
           path: npm-dist/
@@ -127,11 +127,11 @@ jobs:
       contents: read
       id-token: write # trusted publishing and provenance
     steps:
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: 24 # ships npm 11, needed for trusted publishing
           registry-url: https://registry.npmjs.org
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           name: npm-dist
           path: npm-dist

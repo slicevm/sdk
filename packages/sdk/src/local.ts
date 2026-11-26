@@ -17,13 +17,14 @@ export interface LocalConfig {
   timeoutMs: number;
 }
 
-/** Shape of the JSON text returned by the `slice_eval_ts` MCP tool. */
 /** `slice_eval_ts` result as reported by `slice mcp` (runtime 0.14). */
 interface McpEvalPayload {
   ok: boolean;
   /** Guest process.exit(n) or process.exitCode (runtime 0.14+); null when the guest set neither. */
   exitCode?: number | null;
+  /** Display string of the value (`[object Object]` for objects); the fallback when there is no JSON. */
   value: string | null;
+  /** The value's JSON serialization; null for undefined, BigInt and other values JSON cannot hold. */
   returnJson?: string | null;
   /** Uncaught exception or syntax error text. */
   error?: string | null;
@@ -44,7 +45,7 @@ interface McpEvalPayload {
 
 /** Hosted defaults (docs/architecture/01-api-contract.md), sent on every call so local runs match. */
 const DEFAULT_FUEL = 25_000_000;
-const DEFAULT_MEMORY_KB = 4_096;
+const DEFAULT_MEMORY_KB = 8_192;
 /**
  * `slice mcp` clamps per-call `fuel` / `memory` to the server's `--fuel` / `--memory` (at least
  * 100M fuel and 256 MB). Raise the fuel ceiling to the largest plan cap so Scale-sized budgets
@@ -233,14 +234,54 @@ class McpSession {
   }
 }
 
-/** Parses the value as JSON when possible, else returns the raw string (contract rule). */
-function parseValue(value: string | null): unknown {
-  if (value === null) return null;
+/** Parses the value as JSON when possible, else returns the raw string (contract rule); undefined is null. */
+function parseValue(value: string | null | undefined): unknown {
+  if (value === null || value === undefined || value === "undefined") return null;
   try {
     return JSON.parse(value);
   } catch {
     return value;
   }
+}
+
+/**
+ * The run's value, as the hosted gateway builds it: the engine's JSON serialization when there is
+ * one (objects and arrays come back as data, not `[object Object]`), else the display string. A
+ * string result is itself parsed as JSON when possible, so code ending in JSON.stringify(...) works.
+ */
+function resultOf(payload: McpEvalPayload): unknown {
+  if (typeof payload.returnJson === "string") {
+    try {
+      const v: unknown = JSON.parse(payload.returnJson);
+      return typeof v === "string" ? parseValue(v) : v;
+    } catch {
+      // Fall through to the display string.
+    }
+  }
+  return parseValue(payload.value);
+}
+
+/** Violation classes the hosted API puts in front of the engine text, matched on that text. */
+const VIOLATION_CLASSES: Array<[RegExp, string]> = [
+  [/EGRESS_SECRET_LEAK_BLOCKED|Egress DLP/i, "EgressDlpViolation"],
+  [/WallClockExceeded|wall-clock/i, "WallClockExceeded"],
+  [/fuel limit/i, "CpuFuelExhausted"],
+  [/memory ceiling/i, "MemoryCeilingExceeded"],
+  [/SES Lockdown/i, "SesLockdownViolation"],
+  [/network authority/i, "NetAccessDenied"],
+  [/filesystem (read|write) authority/i, "FsAccessDenied"],
+  [/exec authority|Subprocess execution/i, "ExecDenied"],
+  [/environment|env authority/i, "EnvAccessDenied"],
+  [/checkpoint/i, "CheckpointDenied"],
+  [/interrupt/i, "ExecutionInterrupted"],
+];
+
+/** `CpuFuelExhausted: <engine text>`, as in hosted results, so one check works in both modes. */
+function classifyViolation(violation: string): string {
+  const known = /^([A-Z][A-Za-z]+):/.exec(violation)?.[1];
+  if (known && VIOLATION_CLASSES.some(([, c]) => c === known)) return violation;
+  const match = VIOLATION_CLASSES.find(([re]) => re.test(violation));
+  return `${match?.[1] ?? "SandboxViolation"}: ${violation}`;
 }
 
 function localTelemetry(payload: McpEvalPayload): SandboxTelemetry {
@@ -318,12 +359,14 @@ export class LocalBackend implements Backend {
     // guest process.exit / process.exitCode only, so it is dropped when the run ended uncaught.
     const uncaught = typeof payload.error === "string" && payload.error.startsWith("Uncaught");
     const exitCode = typeof payload.exitCode === "number" && !uncaught ? payload.exitCode : undefined;
-    const error = payload.violation || exitCode !== undefined ? null : (payload.error ?? null);
+    // A trap (fuel, memory, time, egress, an uncaught refusal) has a null result, as in the hosted API.
+    const violation = payload.violation ? classifyViolation(payload.violation) : null;
+    const error = violation || exitCode !== undefined ? null : (payload.error ?? null);
     return {
       ok: payload.ok,
       stdout: payload.stdout ?? [],
-      result: error ?? parseValue(payload.value),
-      violation: payload.violation ?? null,
+      result: violation ? null : (error ?? resultOf(payload)),
+      violation,
       telemetry: localTelemetry(payload),
       deniedCapabilities: payload.deniedCapabilities ?? [],
       requestId: `local_${++this.#seq}`,

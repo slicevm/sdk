@@ -60,6 +60,11 @@ export interface SandboxResult {
   telemetry: SandboxTelemetry;
   /** The fuel, memory and time the run got after defaults and plan caps (cloud, gateway 0.6.0). */
   limits?: { fuel: number; memoryKb: number; timeoutMs: number };
+  /**
+   * Requested limits that were above the plan and were reduced, as asked, e.g. `{ memoryKb: 131072 }`
+   * on Free (cloud, gateway 0.6.3). Absent when nothing was reduced; `limits` holds what the run got.
+   */
+  limitsCapped?: { fuel?: number; memoryKb?: number; timeoutMs?: number };
   /** Capability attempts the sandbox refused, including ones the code caught (runtime 0.14.3). */
   deniedCapabilities?: string[];
 }

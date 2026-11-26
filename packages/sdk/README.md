@@ -49,8 +49,13 @@ try {
   (`fuel`, `memoryKb`, `timeoutMs`, `allowNet`, `auditEgress`,
   `deterministicSeed`, `checkpoints`) plus `casDigest`. On Slice Cloud a run
   that asks for nothing gets the plan maximum, and `limits` reports the fuel,
-  memory and time it got. `deniedCapabilities` lists every refused network,
-  file, subprocess or environment attempt, including ones the code caught.
+  memory and time it got. A request above the plan is reduced to it, and
+  `limitsCapped` lists what you asked for (`{ memoryKb: 131072 }`); it is
+  absent when nothing was reduced. `deniedCapabilities` lists every refused
+  network, file, subprocess or environment attempt, including ones the code
+  caught. Local mode returns the same shape: objects as data, `null` as the
+  result of a trapped run, and violations with the same class prefix
+  (`CpuFuelExhausted: ...`).
 - `uploadCas(bytes)` uploads a `.cas` bundle from `slice pack` (remote only,
   Pro and Scale plans) and returns `{ casDigest, bytes, modules }`.
 - `close()` stops the local child process. Safe to call more than once.

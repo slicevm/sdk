@@ -46,16 +46,18 @@ jobs:
             os: windows-2022
             exe: slice.exe
     runs-on: ${{ matrix.os }}
+    timeout-minutes: 60
     steps:
       - name: Check out runtime
         uses: actions/checkout@v4
         with:
           repository: slicevm/slice
           ref: ${{ inputs.runtime_ref }}
-      - uses: dtolnay/rust-toolchain@stable
+          persist-credentials: false
+      - uses: dtolnay/rust-toolchain@39008827e6b4319a349e9a42dfc90579dd25f1ca # stable
         with:
           targets: ${{ matrix.triple }}
-      - uses: Swatinem/rust-cache@v2
+      - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
       - name: Build
         run: cargo build --release --locked -p slice-cli --target ${{ matrix.triple }}
       - name: Check version
@@ -74,8 +76,11 @@ jobs:
     # Stages, tests and packs everything. Dry runs end here, so they need no approval.
     needs: build
     runs-on: ubuntu-24.04
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
       - uses: actions/setup-node@v4
         with:
           node-version: 22 # same as ci.yml; only publish needs npm 11

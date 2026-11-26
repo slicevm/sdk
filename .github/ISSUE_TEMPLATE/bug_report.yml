@@ -1,0 +1,77 @@
+name: Bug report
+description: Something in @slicevm/sdk, @slicevm/mcp or @slicevm/cli does not work as documented
+title: "[Bug]: "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for the report. For a security issue, do not open a public issue: use [private reporting](https://github.com/slicevm/sdk/security/advisories/new). For a problem in the runtime itself, open it in [slicevm/slice](https://github.com/slicevm/slice/issues/new/choose).
+
+  - type: dropdown
+    id: package
+    attributes:
+      label: Package
+      options:
+        - "@slicevm/sdk"
+        - "@slicevm/mcp"
+        - "@slicevm/cli"
+    validations:
+      required: true
+
+  - type: input
+    id: version
+    attributes:
+      label: Package version
+      description: Output of `npm ls @slicevm/sdk` (or the package you use)
+      placeholder: "0.14.4"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: mode
+    attributes:
+      label: Mode
+      options:
+        - Local (runs the slice binary on my machine)
+        - Slice Cloud (SLICE_API_KEY set)
+        - Not applicable
+    validations:
+      required: true
+
+  - type: dropdown
+    id: os
+    attributes:
+      label: Operating system
+      options:
+        - Linux x64
+        - macOS Apple Silicon
+        - Windows x64
+        - Other
+    validations:
+      required: true
+
+  - type: input
+    id: node
+    attributes:
+      label: Node.js version
+      placeholder: "22.11.0"
+    validations:
+      required: true
+
+  - type: textarea
+    id: repro
+    attributes:
+      label: Minimal reproduction
+      description: The smallest code, command or MCP client config that shows the problem. Never paste an API key.
+      render: typescript
+    validations:
+      required: true
+
+  - type: textarea
+    id: behavior
+    attributes:
+      label: Expected and actual behavior
+      description: Include error messages, `requestId` values and stack traces.
+    validations:
+      required: true

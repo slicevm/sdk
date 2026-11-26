@@ -1,0 +1,19 @@
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    groups:
+      actions:
+        patterns: ["*"]
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+    # The @slicevm/* packages are versioned in lockstep by the release process.
+    ignore:
+      - dependency-name: "@slicevm/*"
+    groups:
+      dev-dependencies:
+        dependency-type: development

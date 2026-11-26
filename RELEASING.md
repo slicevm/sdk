@@ -34,7 +34,12 @@ run `npm run npm:generate`, and add a matrix entry in `.github/workflows/release
 3. Run again with `dry_run=false` and approve the `npm` environment (Review deployments).
    The `publish` job publishes exactly the tarballs `verify` tested. Versions that are
    already on npm are skipped, so a failed run can be re-run.
-4. Commit the version bump: `npm run npm:version -- 0.14.0 && npm run npm:generate`.
+4. Commit the version bump through a pull request (`main` accepts no direct pushes):
+   on a branch, `npm run npm:version -- 0.14.0 && npm run npm:generate && npm install`
+   (the lockfile picks up the published platform packages), open the pull request and merge it
+   once `ci` passes. Do not skip this step: `ci` downloads the runtime binary that matches the
+   version in `packages/cli/package.json`, so until it lands the local-mode tests run against
+   the previous runtime.
 5. Smoke test on each OS:
    ```sh
    npx @slicevm/cli@0.14.0 --version

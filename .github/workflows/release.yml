@@ -57,7 +57,8 @@ jobs:
       - uses: dtolnay/rust-toolchain@39008827e6b4319a349e9a42dfc90579dd25f1ca # stable
         with:
           targets: ${{ matrix.triple }}
-      - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
+      # No build cache: release builds start clean, so a cache written by a build of
+      # inputs.runtime_ref can never feed a later release (cache poisoning).
       - name: Build
         run: cargo build --release --locked -p slice-cli --target ${{ matrix.triple }}
       - name: Check version

@@ -31,6 +31,9 @@ run `npm run npm:generate`, and add a matrix entry in `.github/workflows/release
 2. Actions, `release`, Run workflow with `version=0.14.0`, `runtime_ref=v0.14.0`,
    `dry_run=true`. The `verify` job builds, tests and packs; check its output. A dry run
    needs no approval.
+   `runtime_ref` must be exactly `v<version>` and a tag on slicevm/slice; the `check-inputs`
+   job refuses anything else, so a release only ever builds released runtime code. Builds
+   use no cache and start clean.
 3. Run again with `dry_run=false` and approve the `npm` environment (Review deployments).
    The `publish` job publishes exactly the tarballs `verify` tested. Versions that are
    already on npm are skipped, so a failed run can be re-run.

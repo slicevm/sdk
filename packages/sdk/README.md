@@ -53,7 +53,8 @@ try {
   `limitsCapped` lists what you asked for (`{ memoryKb: 131072 }`); it is
   absent when nothing was reduced. `deniedCapabilities` lists every refused
   network, file, subprocess or environment attempt, including ones the code
-  caught. Local mode returns the same shape: objects as data, `null` as the
+  caught. Refusals throw a catchable error with `e.code` (`ERR_SLICE_NET_DENIED`
+  and so on) and the message `OCap Violation: lacks <kind> authority for <target>`. Local mode returns the same shape: objects as data, `null` as the
   result of a trapped run, and violations with the same class prefix
   (`CpuFuelExhausted: ...`).
 - `uploadCas(bytes)` uploads a `.cas` bundle from `slice pack` (remote only,
@@ -104,6 +105,7 @@ Differences from the hosted API:
 | `telemetry` | Measured by the runtime; `casMmapUs` is `0` and `mpkDomain` is `"none"` |
 | `serverTiming` | Always `[]` |
 | `allowNet` | Honored per call, but only for hosts the server also allows: start it with `localArgs: ["--allow-net=<host>"]` |
+| Private networks | As on the hosted API, a granted name that resolves to a loopback, private or link-local address is refused (`ERR_SLICE_NET_DENIED`, runtime 0.14.7). To reach local services from a trusted script, add `localArgs: ["--allow-private-networks"]`; cloud metadata addresses stay blocked |
 | `auditEgress`, `deterministicSeed`, `checkpoints` | Same as the hosted API |
 | `exitCode` | Same as the hosted API (runtime 0.14 or newer) |
 | `Slice.kv` | Shared by all calls of one client (the hosted API starts every run empty) |

@@ -24,7 +24,7 @@ body:
     attributes:
       label: Package version
       description: Output of `npm ls @slicevm/sdk` (or the package you use)
-      placeholder: "0.14.6"
+      placeholder: "0.14.7"
     validations:
       required: true
 

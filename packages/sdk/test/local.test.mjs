@@ -101,6 +101,29 @@ test("local mode", { skip }, async (t) => {
     assert.equal(res.deniedCapabilities.length, 2);
   });
 
+  await t.test("refusals share one message format without compartment names (runtime 0.14.7)", { skip: needs("0.14.7") }, async () => {
+    const res = await slice.evalSandbox(
+      'const m = []; try { await fetch("https://denied.example.org/") } catch (e) { m.push(e.message) } try { require("fs").readFileSync("/etc/hostname") } catch (e) { m.push(e.message) } try { require("child_process").execSync("id") } catch (e) { m.push(e.message) } m',
+    );
+    assert.equal(res.result.length, 3);
+    for (const m of res.result) {
+      assert.match(m, /^OCap Violation: lacks /);
+      assert.doesNotMatch(m, /Compartment/);
+    }
+  });
+
+  await t.test("a refused metadata request is catchable and keeps the result (runtime 0.14.7)", { skip: needs("0.14.7") }, async () => {
+    const res = await slice.evalSandbox(
+      'const r = {}; try { await fetch("http://169.254.169.254/latest/meta-data/") } catch (e) { r.code = e.code } r.after = "kept"; r',
+    );
+    assert.equal(res.ok, true);
+    assert.deepEqual(res.result, { code: "ERR_SLICE_NET_DENIED", after: "kept" });
+    assert.match(res.deniedCapabilities[0], /SSRF_METADATA_BLOCKED:169\.254\.169\.254:80/);
+    const uncaught = await slice.evalSandbox('await fetch("http://169.254.169.254/"); 1');
+    assert.equal(uncaught.ok, false);
+    assert.match(uncaught.violation, /^NetAccessDenied: /);
+  });
+
   await t.test("an uncaught refusal is a classified violation with a null result", async () => {
     const res = await slice.evalSandbox('await fetch("https://denied.example.org/")');
     assert.equal(res.ok, false);

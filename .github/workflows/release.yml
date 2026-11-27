@@ -1,8 +1,13 @@
 name: release
 
 # Builds the slice binary for every target in packages/platforms.json from the
-# runtime repository at the given ref, stages it into the platform packages and
-# publishes all npm packages in lockstep with provenance.
+# runtime repository's release tag v<version>, stages it into the platform packages
+# and publishes all npm packages in lockstep with provenance.
+#
+# The version is the one committed on main (packages/cli/package.json, kept in lockstep
+# by `npm run npm:version`), not a typed input: merge the version bump first, then run
+# this workflow from main. The runtime tag is derived from it, so a release only ever
+# builds a released runtime that matches the reviewed package versions.
 #
 # Authentication: npm trusted publishing (OIDC). Each package trusts this workflow
 # file and the `npm` environment; no npm token is stored anywhere.
@@ -12,12 +17,6 @@ name: release
 on:
   workflow_dispatch:
     inputs:
-      version:
-        description: "Version to publish (e.g. 0.13.5); must match the runtime release"
-        required: true
-      runtime_ref:
-        description: "Git ref of the runtime repository to build (e.g. v0.13.5)"
-        required: true
       dry_run:
         description: "Build and pack only, do not publish"
         type: boolean
@@ -31,24 +30,30 @@ permissions:
   contents: read
 
 jobs:
-  check-inputs:
-    # Builds only the runtime's own release tag for this version (v<version>), never an
-    # arbitrary branch or commit, so the build job runs only released runtime code.
+  version:
+    # The committed version decides what is built and published. Runs from main only.
+    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-24.04
     timeout-minutes: 5
+    outputs:
+      version: ${{ steps.read.outputs.version }}
     steps:
-      - name: Check version and runtime_ref
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - id: read
+        name: Read and check the committed version
         shell: bash
-        env:
-          VERSION: ${{ inputs.version }}
-          RUNTIME_REF: ${{ inputs.runtime_ref }}
         run: |
-          [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || { echo "version must look like 0.14.6"; exit 1; }
-          [ "$RUNTIME_REF" = "v$VERSION" ] || { echo "runtime_ref must be the release tag v$VERSION"; exit 1; }
-          git ls-remote --exit-code --tags https://github.com/slicevm/slice "refs/tags/$RUNTIME_REF" > /dev/null || { echo "slicevm/slice has no tag $RUNTIME_REF"; exit 1; }
+          node scripts/npm/sync-versions.mjs --check
+          version="$(node -p 'require("./packages/cli/package.json").version')"
+          [[ "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || { echo "unexpected version $version"; exit 1; }
+          git ls-remote --exit-code --tags https://github.com/slicevm/slice "refs/tags/v$version" > /dev/null || { echo "slicevm/slice has no release tag v$version; release the runtime first"; exit 1; }
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "Releasing $version from runtime v$version"
 
   build:
-    needs: check-inputs
+    needs: version
     strategy:
       fail-fast: true
       matrix:
@@ -69,13 +74,13 @@ jobs:
         uses: actions/checkout@v7
         with:
           repository: slicevm/slice
-          ref: ${{ inputs.runtime_ref }}
+          ref: v${{ needs.version.outputs.version }}
           persist-credentials: false
       - uses: dtolnay/rust-toolchain@39008827e6b4319a349e9a42dfc90579dd25f1ca # stable
         with:
           targets: ${{ matrix.triple }}
-      # No build cache: release builds start clean, so a cache written by a build of
-      # inputs.runtime_ref can never feed a later release (cache poisoning).
+      # No build cache: release builds start clean, so nothing a build writes can feed a
+      # later release.
       - name: Build
         run: cargo build --release --locked -p slice-cli --target ${{ matrix.triple }}
       - name: Check version
@@ -83,7 +88,7 @@ jobs:
         run: |
           out="$(./target/${{ matrix.triple }}/release/${{ matrix.exe }} --version)"
           echo "$out"
-          echo "$out" | grep -q "v${{ inputs.version }}" || { echo "binary version does not match ${{ inputs.version }}"; exit 1; }
+          echo "$out" | grep -q "v${{ needs.version.outputs.version }}" || { echo "binary version does not match ${{ needs.version.outputs.version }}"; exit 1; }
       - uses: actions/upload-artifact@v7
         with:
           name: slice-${{ matrix.triple }}
@@ -92,7 +97,7 @@ jobs:
 
   verify:
     # Stages, tests and packs everything. Dry runs end here, so they need no approval.
-    needs: build
+    needs: [version, build]
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     steps:
@@ -112,8 +117,11 @@ jobs:
           for d in dist-bin/slice-*; do mv "$d" "dist-bin/${d#dist-bin/slice-}"; done
           find dist-bin -type f
       - run: npm ci
-      - run: node scripts/npm/sync-versions.mjs ${{ inputs.version }}
-      - run: node scripts/npm/generate-platform-packages.mjs
+      - run: node scripts/npm/sync-versions.mjs --check
+      - name: Platform packages match the committed ones
+        run: |
+          node scripts/npm/generate-platform-packages.mjs
+          git diff --exit-code -- packages
       - run: node scripts/npm/stage-binaries.mjs --from=dist-bin --strict
       - run: npm run build
       - name: Test packages against the staged linux binary
@@ -138,7 +146,7 @@ jobs:
   publish:
     # Publishes exactly the tarballs that verify tested. Gated by the npm environment.
     if: ${{ !inputs.dry_run }}
-    needs: verify
+    needs: [version, verify]
     runs-on: ubuntu-24.04
     environment: npm
     permissions:
@@ -155,13 +163,16 @@ jobs:
           path: npm-dist
       - run: npm --version
       - name: Publish
+        env:
+          VERSION: ${{ needs.version.outputs.version }}
+          STAGE: ${{ inputs.stage }}
         run: |
           cd npm-dist
           while read -r tgz; do
             name="$(tar -xOzf "$tgz" package/package.json | node -p 'JSON.parse(require("fs").readFileSync(0)).name')"
-            if npm view "$name@${{ inputs.version }}" version >/dev/null 2>&1; then
-              echo "$name@${{ inputs.version }} is already published, skipping"
-            elif [ "${{ inputs.stage }}" = "true" ]; then
+            if npm view "$name@$VERSION" version >/dev/null 2>&1; then
+              echo "$name@$VERSION is already published, skipping"
+            elif [ "$STAGE" = "true" ]; then
               npm stage publish "./$tgz" --provenance --access public
             else
               npm publish "./$tgz" --provenance --access public

@@ -1,6 +1,6 @@
 {
   "name": "@slicevm/mcp",
-  "version": "0.14.6",
+  "version": "0.14.7",
   "description": "Slice AI Code Mode MCP server: sandboxed TypeScript execution for Claude Desktop, Cursor, and Windsurf via npx, locally or on Slice Cloud with an API key.",
   "license": "MIT",
   "repository": {
@@ -40,7 +40,7 @@
     "test": "node --test test/*.test.js"
   },
   "dependencies": {
-    "@slicevm/cli": "0.14.6"
+    "@slicevm/cli": "0.14.7"
   },
   "publishConfig": {
     "access": "public"

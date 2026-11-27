@@ -40,12 +40,19 @@ async function toApiError(res: Response): Promise<SliceApiError> {
   return new SliceApiError(code, message, res.status, requestId);
 }
 
+// A loop instead of /\/+$/, which backtracks quadratically on long runs of slashes.
+function trimTrailingSlashes(url: string): string {
+  let end = url.length;
+  while (end > 0 && url.charCodeAt(end - 1) === 47) end--;
+  return url.slice(0, end);
+}
+
 export class RemoteBackend implements Backend {
   readonly mode = "remote" as const;
   readonly #config: RemoteConfig;
 
   constructor(config: RemoteConfig) {
-    this.#config = { ...config, baseUrl: config.baseUrl.replace(/\/+$/, "") };
+    this.#config = { ...config, baseUrl: trimTrailingSlashes(config.baseUrl) };
   }
 
   async #post(path: string, body: string | Uint8Array | ArrayBuffer, contentType: string): Promise<Response> {

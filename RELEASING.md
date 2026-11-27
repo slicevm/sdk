@@ -27,23 +27,23 @@ run `npm run npm:generate`, and add a matrix entry in `.github/workflows/release
 
 ## Release
 
-1. The runtime is tagged and released first, for example `v0.14.0`.
-2. Actions, `release`, Run workflow with `version=0.14.0`, `runtime_ref=v0.14.0`,
-   `dry_run=true`. The `verify` job builds, tests and packs; check its output. A dry run
-   needs no approval.
-   `runtime_ref` must be exactly `v<version>` and a tag on slicevm/slice; the `check-inputs`
-   job refuses anything else, so a release only ever builds released runtime code. Builds
-   use no cache and start clean.
-3. Run again with `dry_run=false` and approve the `npm` environment (Review deployments).
+The release workflow takes no version: it publishes the version committed on `main`
+(`packages/cli/package.json`, kept in lockstep across packages) and builds the runtime's
+release tag `v<version>`. So the version bump comes first.
+
+1. The runtime is tagged and released first, for example `v0.14.7`.
+2. Bump the version through a pull request (`main` accepts no direct pushes): on a branch,
+   `npm run npm:version -- 0.14.7 && npm run npm:generate && npm install`, then open the pull
+   request. `ci` downloads the runtime release that matches the new version, so the local-mode
+   tests run against it. Merge once `ci` passes. The lockfile does not list the platform
+   packages of an unpublished version; that is expected (they are optional, and the tests use
+   the runtime binary directly), and `npm ci` accepts it.
+3. Actions, `release`, Run workflow on `main` with `dry_run=true`. The `version` job reads and
+   checks the committed version and that the runtime tag exists; `verify` builds, tests and
+   packs. A dry run needs no approval. Builds use no cache and start clean.
+4. Run again with `dry_run=false` and approve the `npm` environment (Review deployments).
    The `publish` job publishes exactly the tarballs `verify` tested. Versions that are
    already on npm are skipped, so a failed run can be re-run.
-4. Commit the version bump through a pull request (`main` accepts no direct pushes):
-   on a branch, `npm run npm:version -- 0.14.0 && npm run npm:generate && npm install --prefer-online`
-   (the lockfile picks up the published platform packages; without `--prefer-online` a cached
-   package list can silently drop them), open the pull request and merge it
-   once `ci` passes. Do not skip this step: `ci` downloads the runtime binary that matches the
-   version in `packages/cli/package.json`, so until it lands the local-mode tests run against
-   the previous runtime.
 5. Smoke test on each OS:
    ```sh
    npx @slicevm/cli@0.14.0 --version

@@ -40,6 +40,7 @@ All flags are passed through to `slice mcp`:
 | `--allow-read=<prefix>` | Allow VFS reads under a path prefix (repeatable) |
 | `--allow-write=<prefix>` | Allow VFS writes under a path prefix (repeatable) |
 | `--allow-net=<host>` | Allow egress to a host (repeatable); default is deny all |
+| `--allow-private-networks` | Let granted names reach loopback, private and link-local addresses (refused by default since runtime 0.14.7; cloud metadata stays blocked) |
 | `--audit-egress=<secret>` | Trap any egress containing this secret raw, Base64, or Base64URL (repeatable) |
 | `--audit-egress=auto` | Guard every `.env` value whose name looks sensitive, see below |
 | `--no-checkpoints`, `--max-checkpoints=<n>` | Disable or cap `Slice.checkpoint()` for evaluated code |

@@ -31,7 +31,24 @@ permissions:
   contents: read
 
 jobs:
+  check-inputs:
+    # Builds only the runtime's own release tag for this version (v<version>), never an
+    # arbitrary branch or commit, so the build job runs only released runtime code.
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Check version and runtime_ref
+        shell: bash
+        env:
+          VERSION: ${{ inputs.version }}
+          RUNTIME_REF: ${{ inputs.runtime_ref }}
+        run: |
+          [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || { echo "version must look like 0.14.6"; exit 1; }
+          [ "$RUNTIME_REF" = "v$VERSION" ] || { echo "runtime_ref must be the release tag v$VERSION"; exit 1; }
+          git ls-remote --exit-code --tags https://github.com/slicevm/slice "refs/tags/$RUNTIME_REF" > /dev/null || { echo "slicevm/slice has no tag $RUNTIME_REF"; exit 1; }
+
   build:
+    needs: check-inputs
     strategy:
       fail-fast: true
       matrix:

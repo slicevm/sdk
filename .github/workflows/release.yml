@@ -121,7 +121,8 @@ jobs:
       - name: Platform packages match the committed ones
         run: |
           node scripts/npm/generate-platform-packages.mjs
-          git diff --exit-code -- packages
+          # Content only: npm ci marks the bin launchers executable, which is not a change.
+          git -c core.fileMode=false diff --exit-code -- packages
       - run: node scripts/npm/stage-binaries.mjs --from=dist-bin --strict
       - run: npm run build
       - name: Test packages against the staged linux binary

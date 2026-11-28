@@ -9,7 +9,7 @@ const BIN = path.join(__dirname, "..", "bin", "slice.js");
 
 test("manifest lists the three launch targets", () => {
   const names = supportedTargets().map((t) => t.target);
-  for (const name of ["linux-x64-gnu", "darwin-arm64", "win32-x64-msvc"]) assert.ok(names.includes(name), name);
+  for (const name of ["linux-x64-gnu", "darwin-arm64", "darwin-x64", "win32-x64-msvc"]) assert.ok(names.includes(name), name);
   const linux = supportedTargets().find((t) => t.os === "linux");
   assert.equal(linux.libc, "glibc");
 });

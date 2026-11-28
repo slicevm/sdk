@@ -18,6 +18,13 @@
       "binaryFile": "slice"
     },
     {
+      "target": "darwin-x64",
+      "os": "darwin",
+      "cpu": "x64",
+      "packageName": "@slicevm/cli-darwin-x64",
+      "binaryFile": "slice"
+    },
+    {
       "target": "win32-x64-msvc",
       "os": "win32",
       "cpu": "x64",

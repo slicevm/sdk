@@ -67,6 +67,10 @@ release tag `v<version>`. So the version bump comes first.
   slicevm/sdk --file release.yml --env npm --allow-publish`.
 - 0.13.5 (2026-11-22) was the first release: staged from CI, approved with 2FA, then trust
   configured for all six packages and the token deleted.
+- `@slicevm/cli-darwin-x64` (macOS Intel) was added after 0.15.0: its 0.15.0 was published once
+  by hand from the runtime's `slice-macos-x86_64.tar.gz` (SHA-256 checked), packed with the
+  binary at mode 0755 (a tarball packed on Windows loses the executable bit), then trusted.
+  `@slicevm/cli` lists it from the next release (0.15.1); CI builds it on `macos-15-intel`.
 - The `npm` environment requires a maintainer's approval and only deploys from `main`.
 
 ## macOS signing

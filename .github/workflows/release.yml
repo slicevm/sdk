@@ -18,9 +18,9 @@ on:
   workflow_dispatch:
     inputs:
       dry_run:
-        description: "Build and pack only, do not publish"
+        description: "Build and pack only, do not publish (for testing workflow changes; a normal release does not need it)"
         type: boolean
-        default: true
+        default: false
       stage:
         description: "Stage instead of publish; a maintainer approves each package on npmjs.com with 2FA"
         type: boolean

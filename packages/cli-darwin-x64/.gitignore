@@ -1,0 +1,3 @@
+# Binaries are staged at release time by scripts/npm/stage-binaries.mjs
+bin/*
+!bin/.gitkeep

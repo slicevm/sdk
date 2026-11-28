@@ -154,6 +154,7 @@ Functions and the hosted MCP server. Details on [Plans and limits](https://slice
 | :--- | :--- |
 | Linux x64 (glibc) | `@slicevm/cli-linux-x64-gnu` |
 | macOS Apple Silicon | `@slicevm/cli-darwin-arm64` |
+| macOS Intel | `@slicevm/cli-darwin-x64` (0.15.1 and later) |
 | Windows x64 | `@slicevm/cli-win32-x64-msvc` |
 
 The right binary is installed automatically. Alpine (musl) is not supported yet; use a glibc

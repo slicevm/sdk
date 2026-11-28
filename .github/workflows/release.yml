@@ -64,6 +64,9 @@ jobs:
           - triple: aarch64-apple-darwin
             os: macos-15
             exe: slice
+          - triple: x86_64-apple-darwin
+            os: macos-15-intel # native Intel runner, so the version check runs the binary as built
+            exe: slice
           - triple: x86_64-pc-windows-msvc
             os: windows-2022
             exe: slice.exe

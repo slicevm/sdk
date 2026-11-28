@@ -47,7 +47,7 @@ try {
 - `evalSandbox(code, options?)` returns `SandboxResult` plus `requestId` and
   `serverTiming`. Options are the contract's `SandboxEvalOptions`
   (`fuel`, `memoryKb`, `timeoutMs`, `allowNet`, `auditEgress`,
-  `deterministicSeed`, `checkpoints`) plus `casDigest`. On Slice Cloud a run
+  `deterministicSeed`, `checkpoints`, `artifacts`) plus `casDigest`. On Slice Cloud a run
   that asks for nothing gets the plan maximum, and `limits` reports the fuel,
   memory and time it got. A request above the plan is reduced to it, and
   `limitsCapped` lists what you asked for (`{ memoryKb: 131072 }`); it is
@@ -57,11 +57,50 @@ try {
   and so on) and the message `OCap Violation: lacks <kind> authority for <target>`. Local mode returns the same shape: objects as data, `null` as the
   result of a trapped run, and violations with the same class prefix
   (`CpuFuelExhausted: ...`).
+- `result.artifacts` lists the files the code wrote under `/artifacts` (see
+  [Artifacts](#artifacts)).
 - `uploadCas(bytes)` uploads a `.cas` bundle from `slice pack` (remote only,
   Pro and Scale plans) and returns `{ casDigest, bytes, modules }`.
 - `close()` stops the local child process. Safe to call more than once.
 - `parseServerTiming(header)` parses a `Server-Timing` header into
   `{ name, dur?, desc? }[]` (`dur` in milliseconds, per the W3C spec).
+
+### Artifacts
+
+Code can write files under `/artifacts` with plain `node:fs` (a chart, a CSV, a
+log), and they come back with the result, in both modes, with the same names,
+sizes, types and hashes:
+
+```ts
+import { createSlice, artifactText, saveArtifacts } from "@slicevm/sdk";
+
+const slice = createSlice();
+const res = await slice.evalSandbox(`
+  const fs = require("node:fs");
+  fs.writeFileSync("/artifacts/report.csv", "region,total\\nus,42\\n");
+  "done";
+`);
+// [{ name: "report.csv", size: 19, contentType: "text/csv", sha256: "...", data: "<base64>" }]
+console.log(res.artifacts);
+console.log(artifactText(res.artifacts![0]));
+await saveArtifacts(res, "./out"); // writes ./out/report.csv
+```
+
+- `/artifacts` starts empty in every run and shows only what the run wrote
+  there, never a real directory on the machine. Every other path stays refused.
+- Files are returned whatever the outcome, so a log written before a run ran out
+  of fuel still comes back.
+- A file that holds an `auditEgress` secret is dropped, listed in
+  `skippedArtifacts` with reason `auditedSecret` and named in
+  `deniedCapabilities` as `artifact:<name>`. Symlinks are never followed.
+- Caps per run on Slice Cloud: Free 10 files, 1 MB each, 2 MB in total; Pro 20,
+  4 MB, 8 MB; Scale 50, 8 MB, 16 MB. A file over a cap is listed in
+  `skippedArtifacts` (`tooMany`, `tooLarge`, `overTotal`) and the run still
+  succeeds. Locally the runtime's caps apply (64 files, 4 MB each, 16 MB).
+- `artifacts: false` (or `"none"`) turns it off for a call: `/artifacts` is
+  then refused like any other path.
+- Helpers: `artifactBytes(a)` (Uint8Array), `artifactText(a)` (UTF-8) and
+  `saveArtifacts(result, dir)`, which refuses names that would escape `dir`.
 
 A sandbox violation (fuel, memory, OCap, egress DLP) is not an exception: you get
 `ok: false` and `violation` set, exactly like the HTTP API's `200` response.
@@ -93,7 +132,8 @@ binary is found in this order: `binaryPath` option, `SLICE_BINARY_PATH`, the
 `@slicevm/cli` package. The child does not keep your process alive when idle and is
 killed when your process exits; call `close()` for a graceful shutdown.
 
-Local mode requires the `slice` binary 0.11 or newer. Every call sends the
+Local mode requires the `slice` binary 0.15 or newer (the client passes
+`--artifacts-dir` to a temporary directory it removes on `close()`). Every call sends the
 hosted defaults (25,000,000 fuel, 4,096 KB) unless you pass your own, and the
 server is started with a fuel ceiling of 250,000,000 so Scale-sized budgets
 work; your own `localArgs` flags take precedence.
@@ -108,6 +148,7 @@ Differences from the hosted API:
 | Private networks | As on the hosted API, a granted name that resolves to a loopback, private or link-local address is refused (`ERR_SLICE_NET_DENIED`, runtime 0.14.7). To reach local services from a trusted script, add `localArgs: ["--allow-private-networks"]`; cloud metadata addresses stay blocked |
 | `auditEgress`, `deterministicSeed`, `checkpoints` | Same as the hosted API |
 | `exitCode` | Same as the hosted API (runtime 0.14 or newer) |
+| `artifacts` | Same shape as the hosted API; the runtime's own caps apply. Two concurrent calls on one client that write the same artifact name can make one of them fail with `local_runtime_error` |
 | `Slice.kv` | Shared by all calls of one client (the hosted API starts every run empty) |
 | `casDigest`, `uploadCas` | Throw `unsupported` |
 

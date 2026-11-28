@@ -1,10 +1,14 @@
 // Local mode: one long-lived `slice mcp` child per client, JSON-RPC 2.0 over
 // newline-delimited stdio, requests multiplexed by id.
 import { spawn, type ChildProcessWithoutNullStreams } from "node:child_process";
+import { createHash } from "node:crypto";
+import { mkdtempSync, readFileSync, rmSync, unlinkSync } from "node:fs";
 import { createRequire } from "node:module";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { SliceApiError } from "./errors.js";
 import type { Backend, EvalCallOptions, EvalSandboxResult } from "./client.js";
-import type { CasUploadResult, SandboxTelemetry } from "./types.js";
+import type { Artifact, CasUploadResult, SandboxTelemetry, SkippedArtifact } from "./types.js";
 
 const require = createRequire(import.meta.url);
 const SDK_VERSION: string = (require("../package.json") as { version: string }).version;
@@ -41,7 +45,17 @@ interface McpEvalPayload {
   restoresPerformed?: number;
   restoreTimeNs?: number;
   deniedCapabilities?: string[];
+  /** With `artifacts: true` (runtime 0.15): files under /artifacts, without their bytes. */
+  artifacts?: Array<{ name: string; size: number; contentType: string; sha256: string; hostPath?: string }>;
+  skippedArtifacts?: SkippedArtifact[];
 }
+
+/** MCP content blocks after the first (text) one: how `slice mcp` hands over artifact bytes. */
+type ContentBlock =
+  | { type: "text"; text?: string }
+  | { type: "image"; data: string; mimeType: string }
+  | { type: "resource"; resource: { uri: string; mimeType?: string; text?: string } }
+  | { type: "resource_link"; uri: string; name?: string };
 
 /** Hosted defaults (docs/architecture/01-api-contract.md), sent on every call so local runs match. */
 const DEFAULT_FUEL = 25_000_000;
@@ -271,6 +285,7 @@ const VIOLATION_CLASSES: Array<[RegExp, string]> = [
   [/network authority/i, "NetAccessDenied"],
   [/filesystem (read|write) authority/i, "FsAccessDenied"],
   [/exec authority|Subprocess execution/i, "ExecDenied"],
+  [/extension authority/i, "ExtensionDenied"],
   [/environment|env authority/i, "EnvAccessDenied"],
   [/checkpoint/i, "CheckpointDenied"],
   [/interrupt/i, "ExecutionInterrupted"],
@@ -301,11 +316,47 @@ function localTelemetry(payload: McpEvalPayload): SandboxTelemetry {
   };
 }
 
+const sha256 = (bytes: Uint8Array) => createHash("sha256").update(bytes).digest("hex");
+
+/**
+ * Rebuilds the hosted `artifacts` shape (Base64 `data`) from what `slice mcp` returned: images
+ * up to 1 MB as image blocks (matched by hash, they carry no name), text up to 256 KB as embedded
+ * resources, everything else as a file in the session's artifacts directory (read and removed).
+ */
+function collectArtifacts(payload: McpEvalPayload, blocks: ContentBlock[]): Artifact[] {
+  const images = blocks.flatMap((b) => (b.type === "image" ? [Buffer.from(b.data, "base64")] : []));
+  const texts = new Map(blocks.flatMap((b) => (b.type === "resource" && typeof b.resource.text === "string" ? [[b.resource.uri, b.resource.text] as const] : [])));
+  return (payload.artifacts ?? []).map((meta) => {
+    let bytes: Buffer | undefined;
+    if (meta.hostPath) {
+      try {
+        bytes = readFileSync(meta.hostPath);
+        unlinkSync(meta.hostPath);
+      } catch {
+        bytes = undefined;
+      }
+    } else if (texts.has(`slice://artifacts/${meta.name}`)) {
+      bytes = Buffer.from(texts.get(`slice://artifacts/${meta.name}`) ?? "", "utf8");
+    } else {
+      bytes = images.find((img) => sha256(img) === meta.sha256);
+    }
+    if (!bytes || sha256(bytes) !== meta.sha256) {
+      throw new SliceApiError(
+        "local_runtime_error",
+        `artifact ${meta.name} could not be read back from slice mcp (another call on this client may have written the same name at the same time)`,
+      );
+    }
+    return { name: meta.name, size: meta.size, contentType: meta.contentType, sha256: meta.sha256, data: bytes.toString("base64") };
+  });
+}
+
 export class LocalBackend implements Backend {
   readonly mode = "local" as const;
   readonly #config: LocalConfig;
   #session: McpSession | null = null;
   #seq = 0;
+  /** `--artifacts-dir` of the session: where `slice mcp` writes files it cannot inline. */
+  #artifactsDir: string | null = null;
 
   constructor(config: LocalConfig) {
     this.#config = config;
@@ -315,7 +366,9 @@ export class LocalBackend implements Backend {
     if (!this.#session || !this.#session.alive) {
       const user = this.#config.args;
       const ceilings = SERVER_CEILING_ARGS.filter((a) => !user.some((u) => u.startsWith(a.split("=")[0] + "=")));
-      this.#session = new McpSession(resolveBinary(this.#config.binaryPath), [...ceilings, ...user]);
+      this.#artifactsDir ??= mkdtempSync(join(tmpdir(), "slice-sdk-"));
+      const dir = user.some((u) => u.startsWith("--artifacts-dir")) ? [] : [`--artifacts-dir=${this.#artifactsDir}`];
+      this.#session = new McpSession(resolveBinary(this.#config.binaryPath), [...ceilings, ...dir, ...user]);
     }
     const session = this.#session;
     await session.ready;
@@ -339,12 +392,19 @@ export class LocalBackend implements Backend {
     if (options.deterministicSeed !== undefined) args.deterministicSeed = options.deterministicSeed;
     if (options.checkpoints !== undefined) args.checkpoints = options.checkpoints;
     if (options.timeoutMs !== undefined) args.timeoutMs = options.timeoutMs;
+    const mode = options.artifacts ?? true;
+    if (mode !== true && mode !== false && mode !== "inline" && mode !== "none") {
+      throw new SliceApiError("unsupported", `artifacts ${JSON.stringify(mode)} is not available in local mode; use true or false`);
+    }
+    // On by default, as in the hosted API.
+    args.artifacts = mode === true || mode === "inline";
 
     const session = await this.#getSession();
     const result = (await session.request("tools/call", { name: "slice_eval_ts", arguments: args }, this.#config.timeoutMs)) as {
-      content?: Array<{ type: string; text?: string }>;
+      content?: ContentBlock[];
     };
-    const text = result?.content?.find((c) => c.type === "text")?.text;
+    const first = result?.content?.[0];
+    const text = first?.type === "text" ? first.text : undefined;
     let payload: McpEvalPayload;
     try {
       payload = JSON.parse(text ?? "") as McpEvalPayload;
@@ -362,6 +422,8 @@ export class LocalBackend implements Backend {
     // A trap (fuel, memory, time, egress, an uncaught refusal) has a null result, as in the hosted API.
     const violation = payload.violation ? classifyViolation(payload.violation) : null;
     const error = violation || exitCode !== undefined ? null : (payload.error ?? null);
+    const artifacts = collectArtifacts(payload, result?.content?.slice(1) ?? []);
+    const skipped = payload.skippedArtifacts ?? [];
     return {
       ok: payload.ok,
       stdout: payload.stdout ?? [],
@@ -372,6 +434,8 @@ export class LocalBackend implements Backend {
       requestId: `local_${++this.#seq}`,
       serverTiming: [],
       ...(exitCode !== undefined ? { exitCode } : {}),
+      ...(artifacts.length ? { artifacts } : {}),
+      ...(skipped.length ? { skippedArtifacts: skipped } : {}),
     };
   }
 
@@ -383,5 +447,9 @@ export class LocalBackend implements Backend {
     const session = this.#session;
     this.#session = null;
     await session?.close();
+    if (this.#artifactsDir) {
+      rmSync(this.#artifactsDir, { recursive: true, force: true });
+      this.#artifactsDir = null;
+    }
   }
 }

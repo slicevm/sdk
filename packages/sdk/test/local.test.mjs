@@ -2,10 +2,13 @@
 // Uses SLICE_TEST_BINARY, else the sibling repo build; skipped when absent.
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { existsSync } from "node:fs";
+import { existsSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
+import { createHash } from "node:crypto";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { execFileSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
-import { createSlice, SliceApiError } from "../dist/index.js";
+import { artifactBytes, artifactText, createSlice, saveArtifacts, SliceApiError } from "../dist/index.js";
 
 // The runtime repo is a sibling checkout: <root>/slice next to <root>/<this repo>.
 const exe = process.platform === "win32" ? "slice.exe" : "slice";
@@ -181,6 +184,54 @@ test("local mode", { skip }, async (t) => {
   await t.test("budgets above the runtime's default MCP ceiling are honored", async () => {
     const res = await slice.evalSandbox("let i = 0; while (i < 150000000) i++; i", { fuel: 200_000_000 });
     assert.equal(res.ok, true, res.violation ?? "");
+  });
+
+  await t.test("artifacts come back in the hosted shape (runtime 0.15.0)", { skip: needs("0.15.0") }, async () => {
+    const code = [
+      "const fs = require('node:fs');",
+      "fs.writeFileSync('/artifacts/chart.png', new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 1, 2, 3, 4]));",
+      "fs.mkdirSync('/artifacts/data', { recursive: true });",
+      "fs.writeFileSync('/artifacts/data/rows.csv', 'a,b;1,2;');",
+      // Neither an inline image nor short text: slice mcp hands it over as a file.
+      "const blob = new Uint8Array(300000); blob[299999] = 7; fs.writeFileSync('/artifacts/blob.bin', blob);",
+      "fs.writeFileSync('/artifacts/big.log', 'x'.repeat(300000));",
+      "1",
+    ].join(" ");
+    const res = await slice.evalSandbox(code);
+    assert.equal(res.ok, true, res.violation ?? String(res.result));
+    assert.deepEqual(res.artifacts.map((a) => [a.name, a.contentType, a.size]), [
+      ["big.log", "text/plain", 300000],
+      ["blob.bin", "application/octet-stream", 300000],
+      ["chart.png", "image/png", 12],
+      ["data/rows.csv", "text/csv", 8],
+    ]);
+    for (const a of res.artifacts) assert.equal(createHash("sha256").update(artifactBytes(a)).digest("hex"), a.sha256, a.name);
+    assert.equal(artifactText(res.artifacts[3]), "a,b;1,2;");
+    assert.equal(artifactBytes(res.artifacts[1])[299999], 7);
+    assert.equal(res.skippedArtifacts, undefined);
+
+    const dir = mkdtempSync(join(tmpdir(), "slice-art-test-"));
+    try {
+      const written = await saveArtifacts(res, dir);
+      assert.equal(written.length, 4);
+      assert.equal(readFileSync(join(dir, "data", "rows.csv"), "utf8"), "a,b;1,2;");
+      await assert.rejects(saveArtifacts({ artifacts: [{ ...res.artifacts[0], name: "../escape.png" }] }, dir), { code: "bad_request" });
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+
+    // Kept after a violation; secrets dropped and reported; off means refused.
+    const stopped = await slice.evalSandbox("require('node:fs').writeFileSync('/artifacts/progress.log', 'step 1'); while (true) {}", { fuel: 200_000 });
+    assert.match(stopped.violation, /^CpuFuelExhausted: /);
+    assert.deepEqual(stopped.artifacts.map((a) => a.name), ["progress.log"]);
+    const leak = await slice.evalSandbox("require('node:fs').writeFileSync('/artifacts/leak.txt', 'tok_local_123456'); 1", { auditEgress: ["tok_local_123456"] });
+    assert.equal(leak.artifacts, undefined);
+    assert.deepEqual(leak.skippedArtifacts, [{ path: "leak.txt", reason: "auditedSecret" }]);
+    assert.ok(leak.deniedCapabilities.includes("artifact:leak.txt"));
+    const off = await slice.evalSandbox("try { require('node:fs').writeFileSync('/artifacts/x', 'y'); 'wrote' } catch (e) { e.code }", { artifacts: false });
+    assert.equal(off.result, "ERR_SLICE_FS_DENIED");
+    assert.equal(off.artifacts, undefined);
+    await assert.rejects(slice.evalSandbox("1", { artifacts: "store" }), { code: "unsupported" });
   });
 
   await t.test("remote-only features are rejected with typed errors", async () => {

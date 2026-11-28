@@ -26,7 +26,7 @@ There are two modes:
 
 | Tool | Arguments | Purpose |
 | :--- | :--- | :--- |
-| `slice_eval_ts` | `code`, `fuel?`, `memory?` (bytes), `allowNet?`, `allowRead?`, `allowWrite?`, `allowEnv?`, `allowExec?`, `auditSecrets?`, `deterministicSeed?`, `checkpoints?`, `maxCheckpoints?` | Run TS/JS in a fresh sandbox; returns `{ ok, value, error, violation, stdout, fuelUsed, peakMemoryBytes, spawnTimeNs, compileTimeNs, execTimeNs, totalTimeUs, checkpointsTaken, restoresPerformed }` |
+| `slice_eval_ts` | `code`, `fuel?`, `memory?` (bytes), `allowNet?`, `allowRead?`, `allowWrite?`, `allowEnv?`, `allowExec?`, `auditSecrets?`, `deterministicSeed?`, `checkpoints?`, `maxCheckpoints?`, `artifacts?` | Run TS/JS in a fresh sandbox; returns `{ ok, value, error, violation, stdout, fuelUsed, peakMemoryBytes, spawnTimeNs, compileTimeNs, execTimeNs, totalTimeUs, checkpointsTaken, restoresPerformed }`. With `artifacts: true`, files written under `/artifacts` come back as `image` content (PNG, JPEG, GIF, WebP up to 1 MB) or embedded text (up to 256 KB), listed in `artifacts` and `skippedArtifacts` |
 | `slice_kv_set` | `key`, `value` | Write to the in-memory `Slice.kv` store |
 | `slice_kv_get` | `key` | Read from `Slice.kv` |
 | `slice_checkpoint` | `action` (`checkpoint` or `restore`), `snapshot_id?` | Snapshot and restore VFS + KV state |
@@ -44,6 +44,7 @@ All flags are passed through to `slice mcp`:
 | `--audit-egress=<secret>` | Trap any egress containing this secret raw, Base64, or Base64URL (repeatable) |
 | `--audit-egress=auto` | Guard every `.env` value whose name looks sensitive, see below |
 | `--no-checkpoints`, `--max-checkpoints=<n>` | Disable or cap `Slice.checkpoint()` for evaluated code |
+| `--artifacts-dir=<dir>` | Where artifacts too big for the result (or binary) are written; the result links them as `resource_link` |
 | `--smoke-test` | Run a short self-test and exit |
 | `--local` | Stay in local mode even when `SLICE_API_KEY` is set (not passed to `slice mcp`) |
 
@@ -139,7 +140,7 @@ Tools come from Slice Cloud, and `tools/list` shows only what the key's scopes a
 
 | Tool | Arguments | Purpose |
 | :--- | :--- | :--- |
-| `slice_eval_ts` | `code`, `allowNet?` (hosts), `fuel?`, `memoryKb?` | Run TS/JS in a fresh isolate on Slice Cloud; returns stdout, the return value, error, violation and telemetry. Needs scope `sandbox:eval` |
+| `slice_eval_ts` | `code`, `allowNet?` (hosts), `fuel?`, `memoryKb?`, `timeoutMs?`, `artifacts?` | Run TS/JS in a fresh isolate on Slice Cloud; returns stdout, the return value, error, violation and telemetry. Files written under `/artifacts` come back as images or embedded text (on by default). Needs scope `sandbox:eval` |
 | `fn_<name>` | `input?` | Invoke one of your deployed Slice Functions (a `-` in the name becomes `_`). Needs scope `functions:invoke` or `functions:invoke:<name>` |
 
 Each tool call counts as one run on your plan; `initialize` and `tools/list` are

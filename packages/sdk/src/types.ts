@@ -23,6 +23,34 @@ export interface SandboxEvalOptions {
   deterministicSeed?: number;
   /** Allow guest Slice.checkpoint() / Slice.restore() (at most 1,024 per run). Default true. */
   checkpoints?: boolean;
+  /**
+   * Files the code writes under `/artifacts` come back in `result.artifacts` (runtime 0.15,
+   * gateway 0.7.0). Default `true` (same as `"inline"`); `false` or `"none"` leaves `/artifacts`
+   * unavailable, so writes there are refused like any other path.
+   */
+  artifacts?: boolean | "inline" | "none";
+}
+
+/** One file the run wrote under `/artifacts`. */
+export interface Artifact {
+  /** Path relative to `/artifacts`, with forward slashes, e.g. `charts/revenue.png`. */
+  name: string;
+  /** Size in bytes. */
+  size: number;
+  /** Sniffed from the bytes (extension as a hint); `application/octet-stream` when unknown. */
+  contentType: string;
+  /** SHA-256 of the bytes, lowercase hex. */
+  sha256: string;
+  /** The bytes, Base64. */
+  data: string;
+}
+
+/** Why a file under `/artifacts` was not returned. */
+export type ArtifactSkipReason = "symlink" | "tooLarge" | "overTotal" | "tooMany" | "pathTooLong" | "auditedSecret";
+
+export interface SkippedArtifact {
+  path: string;
+  reason: ArtifactSkipReason;
 }
 
 export interface SandboxTelemetry {
@@ -67,6 +95,10 @@ export interface SandboxResult {
   limitsCapped?: { fuel?: number; memoryKb?: number; timeoutMs?: number };
   /** Capability attempts the sandbox refused, including ones the code caught (runtime 0.14.3). */
   deniedCapabilities?: string[];
+  /** Files written under `/artifacts`, sorted by name; absent when there are none. */
+  artifacts?: Artifact[];
+  /** Files under `/artifacts` that were not returned (over a cap, a symlink, an audited secret). */
+  skippedArtifacts?: SkippedArtifact[];
 }
 
 export type ApiErrorCode =

@@ -8,8 +8,8 @@ treat their integrity and their security boundaries as critical.
 
 | Version | Supported |
 | :--- | :--- |
-| `0.14.x` (current) | Yes |
-| `< 0.14.0` | No, upgrade to the latest `0.14.x` |
+| `0.15.x` (current) | Yes |
+| `< 0.15.0` | No, upgrade to the latest `0.15.x` |
 
 All packages share one version with the runtime. Fixes ship as a new patch release of every package.
 

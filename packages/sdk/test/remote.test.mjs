@@ -1,6 +1,6 @@
 import { test, beforeEach, afterEach } from "node:test";
 import assert from "node:assert/strict";
-import { createSlice, SliceApiError } from "../dist/index.js";
+import { artifactBytes, artifactText, createSlice, SliceApiError } from "../dist/index.js";
 
 const TIMING = 'boot;dur=0.00099;desc="Cold Boot", cas;dur=0.00042;desc="CAS mmap", vm;dur=0.0184;desc="VM Exec", total;dur=0.0312';
 
@@ -200,4 +200,21 @@ test("closed clients reject new calls", async () => {
   const slice = createSlice({ apiKey: "k" });
   await slice.close();
   await assert.rejects(slice.evalSandbox("x"), { code: "unsupported" });
+});
+
+test("artifacts: the option is sent and inline files decode", async () => {
+  const csv = Buffer.from("a,b;1,2;").toString("base64");
+  responses.push(
+    json(200, {
+      ...RESULT,
+      artifacts: [{ name: "data/rows.csv", size: 8, contentType: "text/csv", sha256: "x", data: csv }],
+      skippedArtifacts: [{ path: "big.bin", reason: "tooLarge" }],
+    }),
+  );
+  const slice = createSlice({ apiKey: "k", baseUrl: "https://api.test" });
+  const res = await slice.evalSandbox("1", { artifacts: "inline" });
+  assert.deepEqual(JSON.parse(calls[0].init.body).options, { artifacts: "inline" });
+  assert.equal(artifactText(res.artifacts[0]), "a,b;1,2;");
+  assert.equal(artifactBytes(res.artifacts[0]).length, 8);
+  assert.deepEqual(res.skippedArtifacts, [{ path: "big.bin", reason: "tooLarge" }]);
 });

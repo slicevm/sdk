@@ -38,13 +38,14 @@ release tag `v<version>`. So the version bump comes first.
    tests run against it. Merge once `ci` passes. The lockfile does not list the platform
    packages of an unpublished version; that is expected (they are optional, and the tests use
    the runtime binary directly), and `npm ci` accepts it.
-3. Actions, `release`, Run workflow on `main` with `dry_run=true`. The `version` job reads and
-   checks the committed version and that the runtime tag exists; `verify` builds, tests and
-   packs. A dry run needs no approval. Builds use no cache and start clean.
-4. Run again with `dry_run=false` and approve the `npm` environment (Review deployments).
-   The `publish` job publishes exactly the tarballs `verify` tested. Versions that are
-   already on npm are skipped, so a failed run can be re-run.
-5. Smoke test on each OS:
+3. Actions, `release`, Run workflow on `main`. The `version` job reads and checks the
+   committed version and that the runtime tag exists; `verify` builds, tests and packs (no
+   cache, clean builds). Only then does the `publish` job wait for approval of the `npm`
+   environment (Review deployments): check that `verify` passed and approve. Rejecting it ends
+   the run with nothing published. `publish` publishes exactly the tarballs `verify` tested;
+   versions already on npm are skipped, so a failed run can be re-run. `dry_run=true` stops
+   after `verify` without asking for approval; use it only to test workflow changes.
+4. Smoke test on each OS:
    ```sh
    npx @slicevm/cli@0.14.0 --version
    npx -y @slicevm/mcp@0.14.0 --smoke-test --local

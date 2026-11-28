@@ -3,9 +3,13 @@ export type { CreateSliceOptions, EvalCallOptions, EvalSandboxResult, SliceClien
 export { SliceApiError } from "./errors.js";
 export type { ClientErrorCode, SliceErrorCode } from "./errors.js";
 export { parseServerTiming } from "./server-timing.js";
+export { artifactBytes, artifactText, saveArtifacts } from "./artifacts.js";
 export type {
   ApiError,
   ApiErrorCode,
+  Artifact,
+  ArtifactSkipReason,
+  SkippedArtifact,
   CasUploadResult,
   EvalRequest,
   SandboxEvalOptions,

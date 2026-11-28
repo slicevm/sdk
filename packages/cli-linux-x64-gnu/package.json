@@ -1,6 +1,6 @@
 {
   "name": "@slicevm/cli-linux-x64-gnu",
-  "version": "0.15.0",
+  "version": "0.15.1",
   "description": "The linux-x64-gnu native binary for the Slice runtime. Install @slicevm/cli instead of this package.",
   "license": "MIT",
   "repository": {

@@ -18,7 +18,7 @@ The package installs one command, `slice`. With `npx`, use the package name: `np
 | :--- | :--- | :--- |
 | `linux-x64-gnu` | linux / x64 / glibc | `@slicevm/cli-linux-x64-gnu` |
 | `darwin-arm64` | darwin / arm64 | `@slicevm/cli-darwin-arm64` |
-| `darwin-x64` | darwin / x64 | `@slicevm/cli-darwin-x64` (0.15.1 and later) |
+| `darwin-x64` | darwin / x64 | `@slicevm/cli-darwin-x64` |
 | `win32-x64-msvc` | win32 / x64 | `@slicevm/cli-win32-x64-msvc` |
 
 musl-based Linux (Alpine) is not supported yet; use a glibc image such as
